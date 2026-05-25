@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ToolCupboard plugin metadata.
+
+  NOTE: RocketMod does NOT require this file to load the plugin (it loads the
+  compiled ToolCupboard.dll). RocketMod auto-generates its real config file,
+  ToolCupboard.configuration.xml, from ToolCupboardConfiguration.cs on first run.
+  This plugin.xml is provided as a human-readable manifest.
+-->
+<Plugin name="ToolCupboard">
+  <Version>1.0.0</Version>
+  <Author>imaximum.tech</Author>
+  <Description>
+    Rust-style base decay for Unturned. Unprotected barricades/structures lose HP
+    over time; buildables inside the radius of a protection device (Claim Flag,
+    powered Generator, Bed, or a configured Custom Item) are healed instead.
+    No UI - all feedback is delivered through chat.
+  </Description>
+  <Target>
+    <Unturned>3.26.3.2</Unturned>
+    <RocketMod>4.9.3.18</RocketMod>
+  </Target>
+  <Commands>
+    <Command name="decay" permission="toolcupboard.decay">Check protection status at your position</Command>
+    <Command name="toolcupboardreload" aliases="tcreload" permission="toolcupboard.reload">Reload configuration</Command>
+  </Commands>
+</Plugin>
