@@ -28,7 +28,7 @@ $fx      = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319"
 
 $refs = @(
     "$managed\Assembly-CSharp.dll", "$managed\UnityEngine.dll", "$managed\UnityEngine.CoreModule.dll",
-    "$managed\com.rlabrecque.steamworks.net.dll", "$managed\netstandard.dll",
+    "$managed\com.rlabrecque.steamworks.net.dll", "$managed\SDG.NetTransport.dll", "$managed\netstandard.dll",
     "$rocket\Rocket.API.dll", "$rocket\Rocket.Core.dll", "$rocket\Rocket.Unturned.dll",
     "$fx\System.dll", "$fx\System.Core.dll", "$fx\System.Xml.dll"
 )

@@ -14,14 +14,15 @@
     Rust-style base decay for Unturned. Unprotected barricades/structures lose HP
     over time; buildables inside the radius of a protection device (Claim Flag,
     powered Generator, Bed, or a configured Custom Item) are healed instead.
-    No UI - all feedback is delivered through chat.
+    Feedback is delivered through chat; /decay also draws a private effect ring
+    showing the protection radius of your own nearby devices.
   </Description>
   <Target>
     <Unturned>3.26.3.2</Unturned>
     <RocketMod>4.9.3.18</RocketMod>
   </Target>
   <Commands>
-    <Command name="decay" permission="toolcupboard.decay">Check protection status at your position</Command>
+    <Command name="decay" permission="toolcupboard.decay">Check protection status at your position and show protection-radius rings
     <Command name="toolcupboardreload" aliases="tcreload" permission="toolcupboard.reload">Reload configuration</Command>
   </Commands>
 </Plugin>

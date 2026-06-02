@@ -74,6 +74,54 @@ namespace ToolCupboard
     }
 
     /// <summary>
+    /// Effect ring shown by <c>/decay</c> to visualise the protection radius of the caller's own
+    /// (or their group's) protection devices. The ring is sent only to the caller, so it never
+    /// spams other players or reveals enemy bubbles.
+    /// </summary>
+    public sealed class VisualSettings
+    {
+        /// <summary>Master toggle: draw the protection radius ring on /decay.</summary>
+        public bool ShowProtectionRings;
+
+        /// <summary>EffectAsset id used for each ring point. Verify it exists on your server.</summary>
+        public ushort RingEffectId;
+
+        /// <summary>Only the caller's devices within this distance (metres) get a ring drawn.</summary>
+        public float RingDisplayRange;
+
+        /// <summary>How long (seconds) the ring keeps re-drawing after /decay is used.</summary>
+        public float RingDurationSeconds;
+
+        /// <summary>Seconds between ring re-draws while it is showing (smaller = smoother, more packets).</summary>
+        public float RingInterval;
+
+        /// <summary>Vertical offset of the ring relative to the device; negative sinks it toward the ground.</summary>
+        public float RingYOffset;
+
+        /// <summary>Target spacing (metres) between points on the ring; point count scales with radius.</summary>
+        public float RingPointSpacing;
+
+        /// <summary>Hard cap on points per ring so a large radius can't flood the network.</summary>
+        public int RingMaxPoints;
+
+        /// <summary>Default visual settings, used by LoadDefaults and to backfill older configs.</summary>
+        public static VisualSettings Default()
+        {
+            return new VisualSettings
+            {
+                ShowProtectionRings = true,
+                RingEffectId = 130,        // small marker effect; change to taste / verify on your server
+                RingDisplayRange = 48f,    // draw rings for own devices within 48m of the caller
+                RingDurationSeconds = 5f,  // ring lingers ~5s after /decay
+                RingInterval = 0.5f,
+                RingYOffset = 0.5f,
+                RingPointSpacing = 2.5f,   // a point roughly every 2.5m around the circle
+                RingMaxPoints = 64
+            };
+        }
+    }
+
+    /// <summary>
     /// Configuration for the ToolCupboard plugin. RocketMod serializes the public
     /// fields below to/from <c>Plugins/ToolCupboard/ToolCupboard.configuration.xml</c>.
     /// </summary>
@@ -82,6 +130,7 @@ namespace ToolCupboard
         public DecaySettings Decay;
         public HealingSettings Healing;
         public ProtectionSettings Protection;
+        public VisualSettings Visual;
 
         /// <summary>Also decay/heal barricades placed on vehicles. Off by default (edge cases).</summary>
         public bool IncludeVehicleBarricades;
@@ -153,6 +202,8 @@ namespace ToolCupboard
                 RequireClaimed = true,
                 CustomItems = new CustomItem[0]
             };
+
+            Visual = VisualSettings.Default();
 
             IncludeVehicleBarricades = false;
             BypassItemIds = new ushort[0];

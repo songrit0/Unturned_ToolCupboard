@@ -24,6 +24,9 @@ namespace ToolCupboard
         /// <summary>The decay/heal engine. Null while the plugin is unloaded.</summary>
         public DecayEngine Engine { get; private set; }
 
+        /// <summary>Draws protection-radius rings for /decay. Null while the plugin is unloaded.</summary>
+        public RingDisplayService Rings { get; private set; }
+
         private ChatNotifier _notifier;
         private PresenceNotifier _presence;
         private float _presenceTimer;
@@ -46,7 +49,9 @@ namespace ToolCupboard
             U.Events.OnPlayerDisconnected -= OnPlayerDisconnected;
             _notifier?.Clear();
             _presence?.Clear();
+            Rings?.Clear();
             Engine = null;
+            Rings = null;
             _notifier = null;
             _presence = null;
             Instance = null;
@@ -67,9 +72,14 @@ namespace ToolCupboard
 
         private void BuildEngine()
         {
+            // Backfill the Visual section for configs written before it existed, so /decay can't NRE.
+            if (Configuration.Instance.Visual == null)
+                Configuration.Instance.Visual = VisualSettings.Default();
+
             _notifier = new ChatNotifier(Configuration.Instance);
             Engine = new DecayEngine(Configuration.Instance, _notifier);
             _presence = new PresenceNotifier(Configuration.Instance, Engine);
+            Rings = new RingDisplayService(Configuration.Instance);
             _presenceTimer = 0f;
         }
 
@@ -80,6 +90,7 @@ namespace ToolCupboard
 
             float dt = Time.fixedDeltaTime;
             Engine.Tick(dt);
+            Rings.Tick(dt);
 
             ToolCupboardConfiguration cfg = Configuration.Instance;
             if (cfg.WarnOnBaseEnter)

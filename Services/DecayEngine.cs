@@ -255,6 +255,33 @@ namespace ToolCupboard
         /// <summary>Refresh the cached protection bubbles (call once before a batch of IsProtected checks).</summary>
         public void RefreshSources() => RebuildSources();
 
+        /// <summary>
+        /// Returns the protection bubbles owned by this player (or their group) whose centre is within
+        /// <paramref name="withinRange"/> of <paramref name="near"/>. Used by /decay to draw radius rings
+        /// for only the caller's own devices. Rebuilds the source snapshot first.
+        /// </summary>
+        public List<ProtectionSource> GetOwnedSourcesNear(Vector3 near, ulong owner, ulong group, float withinRange)
+        {
+            RebuildSources();
+
+            List<ProtectionSource> result = new List<ProtectionSource>();
+            if (owner == 0 && group == 0)
+                return result;
+
+            float r2 = withinRange * withinRange;
+            for (int i = 0; i < _sources.Count; i++)
+            {
+                ProtectionSource s = _sources[i];
+                bool mine = (owner != 0 && s.Owner == owner) || (group != 0 && s.Group == group);
+                if (!mine)
+                    continue;
+                if ((s.Center - near).sqrMagnitude > r2)
+                    continue;
+                result.Add(s);
+            }
+            return result;
+        }
+
         private static bool OwnedBy(ulong dataOwner, ulong dataGroup, ulong owner, ulong group)
         {
             return (owner != 0 && dataOwner == owner) || (group != 0 && dataGroup == group);

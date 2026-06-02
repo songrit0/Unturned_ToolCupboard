@@ -24,6 +24,7 @@ Buildings inside an active protection bubble are **healed** instead. All feedbac
 - 🛡️ **4 protection methods**: Claim Flag · powered Generator · claimed Bed · Custom Item
 - 👤 **Owner/group aware** (`RequireSameOwner`) — a stranger's device won't shield your base, and yours won't shield an enemy's
 - 💬 **Chat-only**, fully bilingual **EN/TH** messages
+- 🟢 **Protection-radius rings** — `/decay` draws an effect ring around your own/group devices showing their radius (sent only to you)
 - 📍 **Real-time warning** the moment a player steps onto their own *unprotected* base (edge-triggered, no spam)
 - 🩹 `{how}` placeholder auto-explains how to protect, based on live config
 - ⚙️ Percentage or flat HP decay/heal, fully configurable
@@ -80,7 +81,7 @@ Output: `bin/ToolCupboard.dll`
 
 | Command | Aliases | Permission | Description |
 |---------|---------|------------|-------------|
-| `/decay` | — | `toolcupboard.decay` | Check whether your current spot is protected, and by what device |
+| `/decay` | — | `toolcupboard.decay` | Check whether your current spot is protected; also draws protection-radius rings around your own nearby devices |
 | `/toolcupboardreload` | `/tcreload` | `toolcupboard.reload` | Reload config from disk + rebuild engine |
 
 Add `toolcupboard.decay` to your players' group in `Rocket/Permissions.config.xml` (admins with `*` already have everything):
@@ -122,6 +123,24 @@ Add `toolcupboard.decay` to your players' group in `Rocket/Permissions.config.xm
 | `CustomItems` | empty | `<CustomItem Id="1234" Radius="20" />` entries |
 
 > **Default ships with Generator-only protection.** Flip `UseClaimFlags` / `UseBeds` to `true` to enable the rest.
+
+### `<Visual>` — protection-radius ring on `/decay`
+When a player runs `/decay`, a horizontal ring of effect points is drawn around each of **their own
+(or their group's)** protection devices nearby, showing the exact protection radius. The ring is sent
+**only to the caller** (via `SetRelevantPlayer`), so other players never see it and it never reveals enemy bubbles.
+
+| Field | Default | Meaning |
+|-------|---------|---------|
+| `ShowProtectionRings` | `true` | Master toggle for the `/decay` ring |
+| `RingEffectId` | `130` | EffectAsset id used for each ring point — **verify it exists on your server** |
+| `RingDisplayRange` | `48` | Only draw rings for your devices within this many metres of you |
+| `RingDurationSeconds` | `5` | How long the ring keeps re-drawing after `/decay` |
+| `RingInterval` | `0.5` | Seconds between ring re-draws (smaller = smoother, more packets) |
+| `RingYOffset` | `0.5` | Vertical offset of the ring relative to the device |
+| `RingPointSpacing` | `2.5` | Target metres between points; point count scales with radius |
+| `RingMaxPoints` | `64` | Hard cap on points per ring (network safety) |
+
+> An unknown `RingEffectId` logs a warning once and the ring is skipped — pick a valid EffectAsset id.
 
 ### Other
 | Field | Default | Meaning |
@@ -177,7 +196,7 @@ Example (Generator-only config):
 ToolCupboardPlugin.cs          Main plugin (RocketPlugin<TConfig>, FixedUpdate driver)
 ToolCupboardConfiguration.cs   Config schema + defaults
 Models/  Message.cs, ProtectionSource.cs
-Services/  DecayEngine.cs (core), ChatNotifier.cs, PresenceNotifier.cs
+Services/  DecayEngine.cs (core), ChatNotifier.cs, PresenceNotifier.cs, RingDisplayService.cs
 Commands/  CommandDecay.cs, CommandToolCupboardReload.cs
 build.ps1 · ToolCupboard.csproj · plugin.xml
 ```

@@ -37,6 +37,10 @@
       <HintPath>$(UnturnedManaged)\com.rlabrecque.steamworks.net.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="SDG.NetTransport">
+      <HintPath>$(UnturnedManaged)\SDG.NetTransport.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
 
     <!-- RocketMod -->
     <Reference Include="Rocket.API">

@@ -48,6 +48,25 @@ namespace ToolCupboard
                 int secs = Mathf.RoundToInt(plugin.Engine.SecondsUntilDecay);
                 UnturnedChat.Say(caller, "Next decay pass in ~" + secs + "s | รอบผุถัดไปอีก ~" + secs + " วิ", Color.gray);
             }
+
+            ShowProtectionRings(plugin, cfg, pos, owner, group);
+        }
+
+        /// <summary>Draws a radius ring around each of the caller's own/group protection devices nearby.</summary>
+        private static void ShowProtectionRings(ToolCupboardPlugin plugin, ToolCupboardConfiguration cfg, Vector3 pos, ulong owner, ulong group)
+        {
+            if (!cfg.Visual.ShowProtectionRings || plugin.Rings == null)
+                return;
+
+            List<ProtectionSource> sources = plugin.Engine.GetOwnedSourcesNear(pos, owner, group, cfg.Visual.RingDisplayRange);
+            if (sources.Count == 0)
+                return;
+
+            List<KeyValuePair<Vector3, float>> rings = new List<KeyValuePair<Vector3, float>>(sources.Count);
+            foreach (ProtectionSource s in sources)
+                rings.Add(new KeyValuePair<Vector3, float>(s.Center, Mathf.Sqrt(s.RadiusSqr)));
+
+            plugin.Rings.Show(owner, rings);
         }
 
         private static string TypeName(EProtectionType type)
