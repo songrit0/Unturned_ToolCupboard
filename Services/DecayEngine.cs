@@ -30,6 +30,12 @@ namespace ToolCupboard
         private float _decayTimer;
         private float _healTimer;
 
+        // The damage handlers (IsInvincible) read the cached _sources snapshot. Refresh it on this
+        // cadence so a newly placed/removed invincible device is reflected within a few seconds,
+        // without rebuilding the whole list on every single raid hit.
+        private float _sourceRefreshTimer;
+        private const float SourceRefreshInterval = 5f;
+
         // Aggregated per-owner counts for the current decay pass (flushed when it finishes).
         private readonly Dictionary<ulong, int> _decayingCounts = new Dictionary<ulong, int>();
         private readonly Dictionary<ulong, int> _destroyedCounts = new Dictionary<ulong, int>();
@@ -51,6 +57,13 @@ namespace ToolCupboard
         {
             if (!Level.isLoaded)
                 return;
+
+            _sourceRefreshTimer += dt;
+            if (_sourceRefreshTimer >= SourceRefreshInterval)
+            {
+                RebuildSources();
+                _sourceRefreshTimer = 0f;
+            }
 
             _decayTimer += dt;
             if (!_decay.Active && _decayTimer >= _cfg.Decay.DamageInterval)
@@ -162,7 +175,8 @@ namespace ToolCupboard
             ushort cur = data.barricade.health;
             if (max == 0) return;
 
-            bool protect = IsProtected(data.point, data.owner, data.group);
+            ProtectionSource src;
+            bool protect = TryGetProtectionSource(data.point, data.owner, data.group, out src);
 
             if (isDecay)
             {
@@ -175,7 +189,7 @@ namespace ToolCupboard
             else
             {
                 if (!protect || cur >= max) return;
-                BarricadeManager.repair(drop.model, HealAmount(max), 1f, CSteamID.Nil);
+                BarricadeManager.repair(drop.model, HealAmount(max, src), 1f, CSteamID.Nil);
             }
         }
 
@@ -191,7 +205,8 @@ namespace ToolCupboard
             ushort cur = data.structure.health;
             if (max == 0) return;
 
-            bool protect = IsProtected(data.point, data.owner, data.group);
+            ProtectionSource src;
+            bool protect = TryGetProtectionSource(data.point, data.owner, data.group, out src);
 
             if (isDecay)
             {
@@ -204,7 +219,7 @@ namespace ToolCupboard
             else
             {
                 if (!protect || cur >= max) return;
-                StructureManager.repair(drop.model, HealAmount(max), 1f, CSteamID.Nil);
+                StructureManager.repair(drop.model, HealAmount(max, src), 1f, CSteamID.Nil);
             }
         }
 
@@ -228,9 +243,13 @@ namespace ToolCupboard
             return amt < 1f ? 1f : amt; // guarantee progress even with tiny percentages
         }
 
-        private float HealAmount(ushort max)
+        private float HealAmount(ushort max, ProtectionSource src)
         {
-            float amt = _cfg.Healing.UsePercentage ? max * (_cfg.Healing.HealingPerInterval / 100f) : _cfg.Healing.HealingPerInterval;
+            // A custom item with HealPercent > 0 overrides the global heal rate (always % of max).
+            // The SDG repair call clamps at max HP, so any value >= 100 means "instantly back to full".
+            float amt = src.HealPercent > 0f
+                ? max * (src.HealPercent / 100f)
+                : (_cfg.Healing.UsePercentage ? max * (_cfg.Healing.HealingPerInterval / 100f) : _cfg.Healing.HealingPerInterval);
             return amt < 1f ? 1f : amt;
         }
 
@@ -338,6 +357,19 @@ namespace ToolCupboard
 
         private bool TryGetProtection(Vector3 point, ulong owner, ulong group, out EProtectionType type)
         {
+            ProtectionSource s;
+            if (TryGetProtectionSource(point, owner, group, out s))
+            {
+                type = s.Type;
+                return true;
+            }
+            type = EProtectionType.ClaimFlag;
+            return false;
+        }
+
+        /// <summary>First protection bubble covering the point that applies to this owner/group (if any).</summary>
+        private bool TryGetProtectionSource(Vector3 point, ulong owner, ulong group, out ProtectionSource src)
+        {
             // Linear scan: protection devices are few relative to total buildables, and the
             // squared-distance test is cheap. (Bucket by region later if device counts grow huge.)
             for (int i = 0; i < _sources.Count; i++)
@@ -349,11 +381,33 @@ namespace ToolCupboard
                     || (owner != 0 && owner == s.Owner)
                     || (group != 0 && group == s.Group))
                 {
-                    type = s.Type;
+                    src = s;
                     return true;
                 }
             }
-            type = EProtectionType.ClaimFlag;
+            src = default(ProtectionSource);
+            return false;
+        }
+
+        /// <summary>
+        /// True if the point is inside an INVINCIBLE custom-item bubble that applies to this owner/group.
+        /// Reads the cached source snapshot (refreshed on a timer in <see cref="Tick"/>), so it is cheap
+        /// enough to call from the per-hit damage handlers during a raid.
+        /// </summary>
+        public bool IsInvincible(Vector3 point, ulong owner, ulong group)
+        {
+            for (int i = 0; i < _sources.Count; i++)
+            {
+                ProtectionSource s = _sources[i];
+                if (!s.Invincible)
+                    continue;
+                if ((point - s.Center).sqrMagnitude > s.RadiusSqr)
+                    continue;
+                if (!_cfg.Protection.RequireSameOwner
+                    || (owner != 0 && owner == s.Owner)
+                    || (group != 0 && group == s.Group))
+                    return true;
+            }
             return false;
         }
 
@@ -391,11 +445,12 @@ namespace ToolCupboard
 
                     // Custom items take priority: a configured id ALWAYS protects when placed,
                     // regardless of interactable type or power state. Use this to register modded
-                    // generators (or anything else) that the type checks below would miss.
-                    float cr = CustomRadius(id);
-                    if (cr > 0f)
+                    // generators (or anything else) that the type checks below would miss. A custom
+                    // item can also carry per-item perks (Invincible, HealPercent).
+                    CustomItem ci = FindCustomItem(id);
+                    if (ci != null && ci.Radius > 0f)
                     {
-                        AddSource(data, cr, EProtectionType.CustomItem);
+                        AddSource(data, ci.Radius, EProtectionType.CustomItem, ci.Invincible, ci.HealPercent);
                         continue;
                     }
 
@@ -420,7 +475,8 @@ namespace ToolCupboard
             }
         }
 
-        private void AddSource(BarricadeData data, float radius, EProtectionType type)
+        private void AddSource(BarricadeData data, float radius, EProtectionType type,
+                               bool invincible = false, float healPercent = 0f)
         {
             if (radius <= 0f) return;
             _sources.Add(new ProtectionSource
@@ -429,18 +485,20 @@ namespace ToolCupboard
                 RadiusSqr = radius * radius,
                 Owner = data.owner,
                 Group = data.group,
-                Type = type
+                Type = type,
+                Invincible = invincible,
+                HealPercent = healPercent
             });
         }
 
-        private float CustomRadius(ushort id)
+        private CustomItem FindCustomItem(ushort id)
         {
             CustomItem[] items = _cfg.Protection.CustomItems;
-            if (items == null) return 0f;
+            if (items == null) return null;
             for (int i = 0; i < items.Length; i++)
                 if (items[i] != null && items[i].Id == id)
-                    return items[i].Radius;
-            return 0f;
+                    return items[i];
+            return null;
         }
 
         private bool IsBypassed(ushort id)

@@ -3,6 +3,7 @@ using Rocket.Core.Plugins;
 using Rocket.Unturned;
 using Rocket.Unturned.Player;
 using SDG.Unturned;
+using Steamworks;
 using UnityEngine;
 using Logger = Rocket.Core.Logging.Logger;
 
@@ -37,6 +38,10 @@ namespace ToolCupboard
             BuildEngine();
             U.Events.OnPlayerDisconnected += OnPlayerDisconnected;
 
+            // Invincible custom items: cancel any raid damage to buildables inside their bubble.
+            BarricadeManager.onDamageBarricadeRequested += OnDamageBarricadeRequested;
+            StructureManager.onDamageStructureRequested += OnDamageStructureRequested;
+
             ToolCupboardConfiguration cfg = Configuration.Instance;
             Logger.Log("ToolCupboard loaded. DecayInterval=" + cfg.Decay.DamageInterval +
                        "s (" + cfg.Decay.DamagePerInterval + (cfg.Decay.UsePercentage ? "%" : "hp") +
@@ -47,6 +52,8 @@ namespace ToolCupboard
         protected override void Unload()
         {
             U.Events.OnPlayerDisconnected -= OnPlayerDisconnected;
+            BarricadeManager.onDamageBarricadeRequested -= OnDamageBarricadeRequested;
+            StructureManager.onDamageStructureRequested -= OnDamageStructureRequested;
             _notifier?.Clear();
             _presence?.Clear();
             Rings?.Clear();
@@ -61,6 +68,32 @@ namespace ToolCupboard
         private void OnPlayerDisconnected(UnturnedPlayer player)
         {
             _presence?.Remove(player.CSteamID.m_SteamID);
+        }
+
+        // -----------------------------------------------------------------
+        //  Invincibility: cancel damage to buildables inside an invincible bubble
+        // -----------------------------------------------------------------
+
+        private void OnDamageBarricadeRequested(CSteamID instigatorSteamID, Transform barricadeTransform,
+            ref ushort pendingTotalDamage, ref bool shouldAllow, EDamageOrigin damageOrigin)
+        {
+            if (!shouldAllow || Engine == null) return;
+            BarricadeDrop drop = BarricadeManager.FindBarricadeByRootTransform(barricadeTransform);
+            BarricadeData data = drop?.GetServersideData();
+            if (data == null) return;
+            if (Engine.IsInvincible(data.point, data.owner, data.group))
+                shouldAllow = false;
+        }
+
+        private void OnDamageStructureRequested(CSteamID instigatorSteamID, Transform structureTransform,
+            ref ushort pendingTotalDamage, ref bool shouldAllow, EDamageOrigin damageOrigin)
+        {
+            if (!shouldAllow || Engine == null) return;
+            StructureDrop drop = StructureManager.FindStructureByRootTransform(structureTransform);
+            StructureData data = drop?.GetServersideData();
+            if (data == null) return;
+            if (Engine.IsInvincible(data.point, data.owner, data.group))
+                shouldAllow = false;
         }
 
         /// <summary>Reload config from disk and rebuild the engine so new values take effect.</summary>

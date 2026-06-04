@@ -82,6 +82,7 @@ Output: `bin/ToolCupboard.dll`
 | Command | Aliases | Permission | Description |
 |---------|---------|------------|-------------|
 | `/decay` | — | `toolcupboard.decay` | Check whether your current spot is protected; also draws protection-radius rings around your own nearby devices |
+| `/checkhp` | `/hp` `/check` | `toolcupboard.checkhp` | Aim at a barricade/structure and show its **HP** (current/max + %) and protection status (protected / unprotected / invincible) |
 | `/toolcupboardreload` | `/tcreload` | `toolcupboard.reload` | Reload config from disk + rebuild engine |
 
 Add `toolcupboard.decay` to your players' group in `Rocket/Permissions.config.xml` (admins with `*` already have everything):
@@ -120,7 +121,17 @@ Add `toolcupboard.decay` to your players' group in `Rocket/Permissions.config.xm
 | `UseClaimFlags` / `ClaimFlagRadius` | `false` / `32` | Claim Flag protection |
 | `UseGenerators` / `GeneratorRadius` / `RequireFuel` | `true` / `16` / `false` | Powered generator (optionally needs fuel) |
 | `UseBeds` / `BedRadius` / `RequireClaimed` | `false` / `16` / `true` | Bed (optionally must be claimed as spawn) |
-| `CustomItems` | empty | `<CustomItem Id="1234" Radius="20" />` entries |
+| `CustomItems` | empty | `<CustomItem Id="1234" Radius="20" Invincible="false" HealPercent="0" />` entries |
+
+**Custom item perks** (per `<CustomItem>`):
+| Attribute | Default | Meaning |
+|-----------|---------|---------|
+| `Id` | — | Asset id of the barricade/structure that acts as the device |
+| `Radius` | — | Protection radius (metres) of its bubble |
+| `Invincible` | `false` | If `true`, every buildable in the bubble is immune to **ALL** damage — raids **and** decay — so the base can never break (owner/group rules from `RequireSameOwner` still apply) |
+| `HealPercent` | `0` | Heal strength as a % of max HP per healing pass; `0` = use the global `Healing` setting. `300` repairs every part fully each pass (HP is clamped at max, so any value ≥100 = "instantly back to full") |
+
+> A high-tier "fortress core" item is just `<CustomItem Id="..." Radius="25" Invincible="true" HealPercent="300" />` — raid-proof and self-repairing. Hand it out via the VIP shop, admin, etc.
 
 > **Default ships with Generator-only protection.** Flip `UseClaimFlags` / `UseBeds` to `true` to enable the rest.
 

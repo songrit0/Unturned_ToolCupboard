@@ -22,5 +22,11 @@ namespace ToolCupboard
         public ulong Owner;
         public ulong Group;
         public EProtectionType Type;
+
+        /// <summary>Custom-item only: buildables inside this bubble are immune to ALL damage (raid + decay).</summary>
+        public bool Invincible;
+
+        /// <summary>Custom-item only: heal this percent of max HP per pass (0 = use the global Healing setting).</summary>
+        public float HealPercent;
     }
 }

@@ -3,14 +3,31 @@ using Rocket.API;
 
 namespace ToolCupboard
 {
-    /// <summary>One entry in the Custom Item protection list (asset id + radius).</summary>
+    /// <summary>One entry in the Custom Item protection list (asset id + radius + optional perks).</summary>
     public sealed class CustomItem
     {
         [XmlAttribute] public ushort Id;
         [XmlAttribute] public float Radius;
 
+        /// <summary>
+        /// If true, every barricade/structure inside this bubble (owner/group rules still apply when
+        /// RequireSameOwner) is immune to ALL damage — raids AND decay — so the base can never break.
+        /// </summary>
+        [XmlAttribute] public bool Invincible;
+
+        /// <summary>
+        /// Heal strength for buildables in this bubble, as a percent of max HP per healing pass.
+        /// 0 = use the global Healing setting. e.g. 300 fully repairs every part each pass (HP is
+        /// clamped at max by the engine, so &gt;=100 means "instantly back to full").
+        /// </summary>
+        [XmlAttribute] public float HealPercent;
+
         public CustomItem() { }
         public CustomItem(ushort id, float radius) { Id = id; Radius = radius; }
+        public CustomItem(ushort id, float radius, bool invincible, float healPercent)
+        {
+            Id = id; Radius = radius; Invincible = invincible; HealPercent = healPercent;
+        }
     }
 
     /// <summary>Damage applied to UNPROTECTED buildables once per <see cref="DamageInterval"/>.</summary>
