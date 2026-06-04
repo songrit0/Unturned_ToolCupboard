@@ -74,7 +74,7 @@ namespace ToolCupboard
                     : "<color=#ffcc44>Unprotected - will decay | ไม่ป้องกัน จะผุ</color>";
 
             Tell(player,
-                "\U0001f3e0 " + name + ": <b>" + cur + "/" + max + "</b> HP (" + pct + "%)  " + status,
+                name + ": <b>" + cur + "/" + max + "</b> HP (" + pct + "%)  " + status,
                 HpColor(pct));
         }
 
